@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GRANNY: The Haunted Escape - WebXR Horror Game</title>
+
+    <!-- A-Frame v1.6.0 -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #030403;
+            font-family: 'Courier New', Courier, monospace;
+            user-select: none;
+        }
+
+        /* Start / Instructions Menu */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #18201a 0%, #030504 90%);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #9cd4be;
+            text-align: center;
+            box-sizing: border-box;
+            padding: 24px;
+        }
+
+        #start-overlay h1 {
+            font-size: 3.2rem;
+            letter-spacing: 8px;
+            color: #f0f7f4;
+            text-shadow: 0 0 15px rgba(220, 40, 40, 0.6), 0 0 30px rgba(100, 220, 180, 0.4);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            animation: flickerTitle 3.5s infinite;
+        }
+
+        #start-overlay p {
+            font-size: 1.05rem;
+            max-width: 650px;
+            line-height: 1.6;
+            color: #789c8e;
+            margin-bottom: 20px;
+        }
+
+        .warning-box {
+            border: 1px solid rgba(220, 40, 40, 0.55);
+            background: rgba(45, 10, 10, 0.45);
+            padding: 12px 28px;
+            border-radius: 4px;
+            color: #ff6b6b;
+            font-size: 0.95rem;
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+        }
+
+        .btn-start {
+            background: linear-gradient(180deg, #1b3d32 0%, #0a1f18 100%);
+            border: 2px solid #3ca884;
+            color: #d1f7ec;
+            padding: 16px 48px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            cursor: pointer;
+            border-radius: 4px;
+            box-shadow: 0 0 24px rgba(60, 168, 132, 0.35);
+            transition: all 0.25s ease-in-out;
+        }
+
+        .btn-start:hover {
+            background: linear-gradient(180deg, #2b5948 0%, #133328 100%);
+            box-shadow: 0 0 35px rgba(80, 220, 175, 0.65);
+            transform: scale(1.05);
+            color: #ffffff;
+        }
+
+        /* Dynamic Vignette & Heartbeat Pulse Overlay */
+        #vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: inset 0 0 100px 40px rgba(0, 0, 0, 0.92);
+            transition: box-shadow 0.1s ease, opacity 0.1s ease;
+            opacity: 0.85;
+        }
+
+        /* Jumpscare Blood Flash Overlay */
+        #jumpscare-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1002;
+            background: radial-gradient(circle at center, rgba(180, 0, 0, 0.85) 0%, rgba(50, 0, 0, 0.95) 100%);
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+            font-size: 3rem;
+            font-weight: bold;
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px #000000;
+        }
+
+        /* Escape Victory Overlay */
+        #victory-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #1b3d32 0%, #030a07 100%);
+            z-index: 1003;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #d1f7ec;
+            text-align: center;
+        }
+
+        #victory-overlay h1 {
+            font-size: 3.2rem;
+            color: #6ee6b8;
+            letter-spacing: 8px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 25px rgba(110, 230, 184, 0.6);
+        }
+
+        /* Desktop HUD & Inventory */
+        #hud-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1001;
+            color: #5bb398;
+            font-size: 0.95rem;
+            background: rgba(4, 10, 8, 0.85);
+            border: 1px solid rgba(60, 168, 132, 0.3);
+            padding: 14px 20px;
+            border-radius: 6px;
+            pointer-events: none;
+            display: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .hud-stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .hud-val {
+            color: #d8fff2;
+            font-weight: bold;
+        }
+
+        .alert-text {
+            color: #ff4d4d !important;
+            text-shadow: 0 0 10px #ff1744;
+            animation: alertPulse 0.5s infinite alternate;
+        }
+
+        /* Center Crosshair for Desktop */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: rgba(220, 245, 235, 0.75);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 0 6px rgba(110, 230, 184, 0.8);
+        }
+
+        @keyframes flickerTitle {
+
+            0%,
+            18%,
+            20%,
+            22%,
+            25%,
+            53%,
+            55%,
+            100% {
+                opacity: 1;
+                text-shadow: 0 0 15px rgba(220, 40, 40, 0.6), 0 0 30px rgba(100, 220, 180, 0.4);
+            }
+
+            19%,
+            21%,
+            54% {
+                opacity: 0.3;
+                text-shadow: none;
+            }
+        }
+
+        @keyframes alertPulse {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.08);
+            }
+        }
+    </style>
+
+    <script>
+        /* =========================================================================
+           1. PROCEDURAL WEB AUDIO ENGINE (GRANNY WHISPERS, LULLABY, NOISE, CHASE)
+           ========================================================================= */
+        class GrannyHorrorAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.bpm = 68;
+                this.heartbeatTimer = null;
+                this.isChasing = false;
+                this.chaseGain = null;
+                this.chaseOsc = null;
+                this.initialized = false;
+            }
+
+            init() {
+                if (this.initialized) return;
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.92;
+                this.masterGain.connect(this.ctx.destination);
+
+                this.startAmbientHouseDrone();
+                this.startHeartbeatLoop();
+                this.startLullabyLoop();
+                this.initialized = true;
+            }
+
+            startAmbientHouseDrone() {
+                const subOsc = this.ctx.createOscillator();
+                const windOsc = this.ctx.createOscillator();
+                const filter = this.ctx.createBiquadFilter();
+                const gain = this.ctx.createGain();
+
+                subOsc.type = 'sine';
+                subOsc.frequency.value = 46.0;
+
+                windOsc.type = 'triangle';
+                windOsc.frequency.value = 92.5;
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 130;
+                gain.gain.value = 0.32;
+
+                subOsc.connect(filter);
+                windOsc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+
+                subOsc.start();
+                windOsc.start();
+            }
+
+            // Creepy children's lullaby melody played by Granny from afar
+            startLullabyLoop() {
+                const melodyNotes = [523.25, 493.88, 440.00, 392.00, 440.00, 523.25, 392.00]; // C5, B4, A4, G4, A4, C5, G4
+                let noteIdx = 0;
+
+                const playNextNote = () => {
+                    if (this.ctx && !this.isChasing) {
+                        const now = this.ctx.currentTime;
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        const filter = this.ctx.createBiquadFilter();
+
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(melodyNotes[noteIdx], now);
+
+                        filter.type = 'bandpass';
+                        filter.frequency.value = melodyNotes[noteIdx];
+                        filter.Q.value = 5.0;
+
+                        gain.gain.setValueAtTime(0.001, now);
+                        gain.gain.linearRampToValueAtTime(0.06, now + 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+                        osc.connect(filter);
+                        filter.connect(gain);
+                        gain.connect(this.masterGain);
+
+                        osc.start(now);
+                        osc.stop(now + 0.85);
+
+                        noteIdx = (noteIdx + 1) % melodyNotes.length;
+                    }
+                    const interval = this.isChasing ? 3500 : (1800 + Math.random() * 800);
+                    setTimeout(playNextNote, interval);
+                };
+                setTimeout(playNextNote, 2500);
+            }
+
+            playHeartbeat(onBeatCallback) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                // Lub
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(65, now);
+                osc1.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+
+                gain1.gain.setValueAtTime(0.01, now);
+                gain1.gain.exponentialRampToValueAtTime(0.85, now + 0.025);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+                osc1.connect(gain1);
+                gain1.connect(this.masterGain);
+                osc1.start(now);
+                osc1.stop(now + 0.15);
+
+                // Dub
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(52, now + 0.14);
+                osc2.frequency.exponentialRampToValueAtTime(24, now + 0.28);
+
+                gain2.gain.setValueAtTime(0.01, now + 0.14);
+                gain2.gain.exponentialRampToValueAtTime(0.72, now + 0.17);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+                osc2.connect(gain2);
+                gain2.connect(this.masterGain);
+                osc2.start(now + 0.14);
+                osc2.stop(now + 0.32);
+
+                if (onBeatCallback) onBeatCallback();
+            }
+
+            startHeartbeatLoop() {
+                const loop = () => {
+                    this.playHeartbeat(() => {
+                        window.dispatchEvent(new CustomEvent('heartbeat-tick', { detail: { bpm: this.bpm } }));
+                    });
+                    const intervalMs = (60 / this.bpm) * 1000;
+                    this.heartbeatTimer = setTimeout(loop, intervalMs);
+                };
+                loop();
+            }
+
+            setBpm(newBpm) {
+                this.bpm = Math.max(60, Math.min(160, newBpm));
+            }
+
+            // Wooden Floorboard Creak SFX (Sound alert trigger)
+            playFloorboardCreak() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                const startFreq = 260 + Math.random() * 80;
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.linearRampToValueAtTime(startFreq - 110, now + 0.22);
+
+                filter.type = 'bandpass';
+                filter.frequency.value = 400;
+                filter.Q.value = 3.5;
+
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.28, now + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+
+                osc.start(now);
+                osc.stop(now + 0.28);
+            }
+
+            // Creaky Door / Wardrobe Open SFX
+            playDoorCreak() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.linearRampToValueAtTime(290, now + 0.4);
+
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+
+                osc.start(now);
+                osc.stop(now + 0.48);
+            }
+
+            // Dropped Item / Vase Crash Sound Alert
+            playItemDropNoise() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                // Heavy floor thud
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(110, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 0.3);
+
+                // Clattering noise
+                for (let i = 0; i < 3; i++) {
+                    const clink = this.ctx.createOscillator();
+                    const clinkG = this.ctx.createGain();
+                    clink.type = 'triangle';
+                    clink.frequency.setValueAtTime(1200 + i * 400 + Math.random() * 200, now + i * 0.05);
+                    clinkG.gain.setValueAtTime(0.25 / (i + 1), now + i * 0.05);
+                    clinkG.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.12);
+
+                    clink.connect(clinkG);
+                    clinkG.connect(this.masterGain);
+                    clink.start(now + i * 0.05);
+                    clink.stop(now + i * 0.05 + 0.15);
+                }
+            }
+
+            // Key Unlock / Crowbar Pry SFX
+            playUnlockSuccess() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [587.33, 880.00, 1174.66].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.35);
+                });
+            }
+
+            // Chase Mode Music Toggle
+            setChaseMode(active) {
+                if (!this.ctx) return;
+                if (active && !this.isChasing) {
+                    this.isChasing = true;
+                    this.setBpm(142);
+                    const now = this.ctx.currentTime;
+
+                    this.chaseOsc = this.ctx.createOscillator();
+                    const filter = this.ctx.createBiquadFilter();
+                    this.chaseGain = this.ctx.createGain();
+
+                    this.chaseOsc.type = 'sawtooth';
+                    this.chaseOsc.frequency.setValueAtTime(80, now);
+                    this.chaseOsc.frequency.linearRampToValueAtTime(110, now + 2);
+
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 350;
+
+                    this.chaseGain.gain.setValueAtTime(0.01, now);
+                    this.chaseGain.gain.linearRampToValueAtTime(0.45, now + 0.3);
+
+                    this.chaseOsc.connect(filter);
+                    filter.connect(this.chaseGain);
+                    this.chaseGain.connect(this.masterGain);
+
+                    this.chaseOsc.start(now);
+                } else if (!active && this.isChasing) {
+                    this.isChasing = false;
+                    this.setBpm(70);
+                    if (this.chaseGain) {
+                        const now = this.ctx.currentTime;
+                        this.chaseGain.gain.linearRampToValueAtTime(0.001, now + 0.4);
+                        setTimeout(() => {
+                            if (this.chaseOsc) this.chaseOsc.stop();
+                        }, 450);
+                    }
+                }
+            }
+
+            // Bat Strike Jumpscare Impact
+            playJumpscareStrike() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                // Heavy distorted bass hit
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(25, now + 0.4);
+                gain.gain.setValueAtTime(0.95, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 0.5);
+
+                // Screech burst
+                const screech = this.ctx.createOscillator();
+                const screechG = this.ctx.createGain();
+                screech.type = 'sawtooth';
+                screech.frequency.setValueAtTime(2400, now);
+                screech.frequency.linearRampToValueAtTime(800, now + 0.35);
+                screechG.gain.setValueAtTime(0.55, now);
+                screechG.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+                screech.connect(screechG);
+                screechG.connect(this.masterGain);
+                screech.start(now);
+                screech.stop(now + 0.4);
+            }
+        }
+
+        const soundEngine = new GrannyHorrorAudioEngine();
+
+        /* =========================================================================
+           2. PROCEDURAL TEXTURES (CREAKY WOOD PLANKS, PEELING VINTAGE WALLPAPER)
+           ========================================================================= */
+        function generateWoodFloorTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#261b14';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const plankHeight = 64;
+            ctx.strokeStyle = '#100a07';
+            ctx.lineWidth = 4;
+
+            for (let y = 0; y < 512; y += plankHeight) {
+                ctx.strokeRect(0, y, 512, plankHeight);
+                const shade = Math.random() * 20 - 10;
+                ctx.fillStyle = `rgba(${38 + shade}, ${27 + shade}, ${20 + shade}, 0.5)`;
+                ctx.fillRect(2, y + 2, 508, plankHeight - 4);
+
+                for (let g = 0; g < 6; g++) {
+                    ctx.strokeStyle = 'rgba(15, 10, 7, 0.4)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y + Math.random() * plankHeight);
+                    ctx.lineTo(512, y + Math.random() * plankHeight);
+                    ctx.stroke();
+                }
+            }
+
+            return canvas.toDataURL();
+        }
+
+        function generateWallpaperTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#2d3328';
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.strokeStyle = 'rgba(70, 85, 65, 0.35)';
+            ctx.lineWidth = 2;
+            for (let x = 32; x < 512; x += 64) {
+                for (let y = 32; y < 512; y += 64) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, 14, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = 'rgba(12, 18, 14, 0.65)';
+            for (let i = 0; i < 35; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * 512, Math.random() * 512, Math.random() * 30 + 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            return canvas.toDataURL();
+        }
+
+        /* =========================================================================
+           3. GLOBAL GAME STATE & SOUND-BROADCASTING SYSTEM
+           ========================================================================= */
+        const GameState = {
+            heldItem: null, // 'crowbar', 'padlock_key', 'master_key', 'vase'
+            isHiding: false,
+            locks: {
+                woodenBar: true, // Requires Crowbar
+                padlock: true,   // Requires Padlock Key
+                masterLock: true // Requires Master Key
+            },
+            day: 1,
+            isGameOver: false,
+            isEscaped: false
+        };
+
+        function broadcastNoise(position, intensity = 1.0) {
+            window.dispatchEvent(new CustomEvent('granny-noise-heard', {
+                detail: { pos: position, intensity: intensity }
+            }));
+        }
+
+        /* =========================================================================
+           4. CUSTOM A-FRAME COMPONENTS: RESPONSIVE WASD LOCOMOTION & SLOW GRANNY AI
+           ========================================================================= */
+
+        // Quest 3 / 3S Haptic Feedback Manager
+        AFRAME.registerComponent('quest-haptics', {
+            schema: { hand: { type: 'string', default: 'right' } },
+            init: function () {
+                this.gamepad = null;
+                this.el.addEventListener('controllerconnected', (e) => {
+                    this.gamepad = e.detail.data.gamepad;
+                });
+
+                window.addEventListener('heartbeat-tick', (e) => {
+                    const intensity = Math.min(1.0, 0.25 + (e.detail.bpm / 240));
+                    this.pulse(intensity, 70);
+                });
+
+                window.addEventListener('jumpscare-event', () => {
+                    this.pulse(1.0, 400);
+                });
+            },
+            pulse: function (intensity, duration) {
+                if (!this.gamepad) {
+                    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                    for (let i = 0; i < gamepads.length; i++) {
+                        const gp = gamepads[i];
+                        if (gp && gp.hapticActuators && gp.hapticActuators.length > 0) {
+                            gp.hapticActuators[0].pulse(intensity, duration);
+                        }
+                    }
+                    return;
+                }
+                if (this.gamepad.hapticActuators && this.gamepad.hapticActuators.length > 0) {
+                    this.gamepad.hapticActuators[0].pulse(intensity, duration);
+                }
+            }
+        });
+
+        // Responsive W, A, S, D Movement & Quest 3 Thumbstick Locomotion
+        AFRAME.registerComponent('player-locomotion', {
+            schema: {
+                moveSpeed: { type: 'number', default: 2.8 }
+            },
+            init: function () {
+                this.camera = document.querySelector('#player-camera');
+                this.isCrouched = false;
+                this.keys = {};
+
+                // Key listeners for W, A, S, D and Arrow Keys
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+
+                    // 'C' key toggles crouch / stealth
+                    if (e.code === 'KeyC') {
+                        this.toggleCrouch();
+                    }
+                    // 'G' key drops held item
+                    if (e.code === 'KeyG') {
+                        this.dropHeldItem();
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            },
+            toggleCrouch: function () {
+                this.isCrouched = !this.isCrouched;
+                if (this.camera) {
+                    this.camera.setAttribute('position', { x: 0, y: this.isCrouched ? 0.75 : 1.6, z: 0 });
+                }
+                const hudHiding = document.querySelector('#hud-hiding');
+                if (hudHiding) {
+                    hudHiding.textContent = this.isCrouched ? "CROUCHED (STEALTH)" : "STANDING";
+                }
+            },
+            dropHeldItem: function () {
+                if (!GameState.heldItem) return;
+                const itemType = GameState.heldItem;
+                GameState.heldItem = null;
+
+                const playerPos = this.el.getAttribute('position');
+                const newItem = document.createElement('a-entity');
+                newItem.setAttribute('position', { x: playerPos.x, y: 0.1, z: playerPos.z - 0.5 });
+                newItem.setAttribute('class', 'clickable');
+                newItem.setAttribute('interactive-item', `type: ${itemType}`);
+
+                if (itemType === 'crowbar') {
+                    newItem.innerHTML = `<a-box width="0.04" height="0.04" depth="0.5" color="#9e2a2b" material="metalness: 0.8"></a-box>`;
+                } else if (itemType === 'padlock_key') {
+                    newItem.innerHTML = `<a-box width="0.06" height="0.02" depth="0.14" color="#d4af37" material="metalness: 0.95"></a-box>`;
+                } else if (itemType === 'master_key') {
+                    newItem.innerHTML = `<a-box width="0.06" height="0.02" depth="0.14" color="#c0c0c0" material="metalness: 0.95"></a-box>`;
+                } else if (itemType === 'vase') {
+                    newItem.innerHTML = `<a-cylinder radius="0.1" height="0.25" color="#556b64"></a-cylinder>`;
+                }
+
+                document.querySelector('a-scene').appendChild(newItem);
+
+                soundEngine.playItemDropNoise();
+                broadcastNoise(playerPos, 1.0);
+
+                const hudItem = document.querySelector('#hud-item');
+                if (hudItem) hudItem.textContent = "NONE";
+            },
+            tick: function (time, delta) {
+                if (delta <= 0 || GameState.isGameOver || GameState.isEscaped) return;
+                const dt = delta / 1000;
+
+                let moveX = 0;
+                let moveZ = 0;
+
+                // W, A, S, D Controls
+                if (this.keys['KeyW'] || this.keys['ArrowUp']) moveZ -= 1;
+                if (this.keys['KeyS'] || this.keys['ArrowDown']) moveZ += 1;
+                if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveX -= 1;
+                if (this.keys['KeyD'] || this.keys['ArrowRight']) moveX += 1;
+
+                // VR Thumbstick Movement (Left Controller Axes)
+                const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+                for (let i = 0; i < gamepads.length; i++) {
+                    const gp = gamepads[i];
+                    if (gp && gp.axes && gp.axes.length >= 2 && gp.hand === 'left') {
+                        const axisX = gp.axes[2] !== undefined ? gp.axes[2] : gp.axes[0];
+                        const axisY = gp.axes[3] !== undefined ? gp.axes[3] : gp.axes[1];
+                        if (Math.abs(axisX) > 0.15) moveX += axisX;
+                        if (Math.abs(axisY) > 0.15) moveZ += axisY;
+                    }
+                }
+
+                if (moveX !== 0 || moveZ !== 0) {
+                    // Normalize direction
+                    const len = Math.hypot(moveX, moveZ);
+                    const dirX = moveX / len;
+                    const dirZ = moveZ / len;
+
+                    const rot = this.camera.object3D.rotation;
+                    const angle = rot.y;
+
+                    const forwardX = -Math.sin(angle);
+                    const forwardZ = -Math.cos(angle);
+                    const rightX = Math.cos(angle);
+                    const rightZ = -Math.sin(angle);
+
+                    const speed = this.isCrouched ? this.data.moveSpeed * 0.5 : this.data.moveSpeed;
+                    const pos = this.el.getAttribute('position');
+
+                    pos.x += (forwardX * -dirZ + rightX * dirX) * speed * dt;
+                    pos.z += (forwardZ * -dirZ + rightZ * dirX) * speed * dt;
+
+                    // Clamping to house walls
+                    pos.x = Math.max(-5.1, Math.min(5.1, pos.x));
+                    pos.z = Math.max(-5.1, Math.min(5.1, pos.z));
+
+                    this.el.setAttribute('position', pos);
+                }
+            }
+        });
+
+        // Interactive Objects (Items, Drawers, Wardrobes, Locked Exit Door)
+        AFRAME.registerComponent('interactive-item', {
+            schema: {
+                type: { type: 'string', default: 'padlock_key' }
+            },
+            init: function () {
+                this.el.addEventListener('click', () => {
+                    this.handleInteract();
+                });
+            },
+            handleInteract: function () {
+                const type = this.data.type;
+                const hudItem = document.querySelector('#hud-item');
+                const hudStatus = document.querySelector('#hud-status');
+
+                // Pick up Items
+                if (type === 'padlock_key' || type === 'crowbar' || type === 'master_key' || type === 'vase') {
+                    if (GameState.heldItem) return;
+                    GameState.heldItem = type;
+                    this.el.parentNode.removeChild(this.el);
+                    soundEngine.playUnlockSuccess();
+
+                    if (hudItem) {
+                        hudItem.textContent = type.toUpperCase().replace('_', ' ');
+                    }
+                    if (hudStatus) {
+                        hudStatus.textContent = `PICKED UP ${type.toUpperCase()}`;
+                    }
+                }
+
+                // Sliding Searchable Drawers
+                else if (type === 'drawer') {
+                    const isOpen = this.el.getAttribute('data-open') === 'true';
+                    const curPos = this.el.getAttribute('position');
+                    this.el.setAttribute('position', {
+                        x: curPos.x,
+                        y: curPos.y,
+                        z: isOpen ? curPos.z + 0.25 : curPos.z - 0.25
+                    });
+                    this.el.setAttribute('data-open', (!isOpen).toString());
+                    soundEngine.playDoorCreak();
+                    broadcastNoise(this.el.getAttribute('position'), 0.5);
+                }
+
+                // Wardrobe Hiding Closet Door
+                else if (type === 'wardrobe_door') {
+                    const isOpen = this.el.getAttribute('data-open') === 'true';
+                    this.el.setAttribute('rotation', { x: 0, y: isOpen ? 0 : -85, z: 0 });
+                    this.el.setAttribute('data-open', (!isOpen).toString());
+                    soundEngine.playDoorCreak();
+
+                    GameState.isHiding = !isOpen;
+                    const hudHiding = document.querySelector('#hud-hiding');
+                    if (hudHiding) {
+                        hudHiding.textContent = GameState.isHiding ? "HIDDEN IN WARDROBE" : "EXPOSED";
+                    }
+                }
+
+                // Main Exit Door Lock Solving
+                else if (type === 'exit_door') {
+                    const barEl = document.querySelector('#exit-wooden-bar');
+                    const padlockEl = document.querySelector('#exit-padlock');
+                    const masterEl = document.querySelector('#exit-master-lock');
+
+                    // Stage 1: Pry off wooden bar with Crowbar
+                    if (GameState.locks.woodenBar) {
+                        if (GameState.heldItem === 'crowbar') {
+                            GameState.locks.woodenBar = false;
+                            if (barEl) barEl.setAttribute('visible', 'false');
+                            soundEngine.playUnlockSuccess();
+                            if (hudStatus) hudStatus.textContent = "PRIED OFF WOODEN BAR!";
+                        } else {
+                            if (hudStatus) hudStatus.textContent = "LOCKED: NEED CROWBAR FOR WOODEN BAR";
+                            soundEngine.playDoorCreak();
+                        }
+                    }
+                    // Stage 2: Unlock Padlock with Padlock Key
+                    else if (GameState.locks.padlock) {
+                        if (GameState.heldItem === 'padlock_key') {
+                            GameState.locks.padlock = false;
+                            if (padlockEl) padlockEl.setAttribute('visible', 'false');
+                            soundEngine.playUnlockSuccess();
+                            if (hudStatus) hudStatus.textContent = "UNLOCKED PADLOCK!";
+                        } else {
+                            if (hudStatus) hudStatus.textContent = "LOCKED: NEED GOLDEN PADLOCK KEY";
+                            soundEngine.playDoorCreak();
+                        }
+                    }
+                    // Stage 3: Unlock Master Lock with Master Key & ESCAPE!
+                    else if (GameState.locks.masterLock) {
+                        if (GameState.heldItem === 'master_key') {
+                            GameState.locks.masterLock = false;
+                            if (masterEl) masterEl.setAttribute('visible', 'false');
+                            soundEngine.playUnlockSuccess();
+
+                            this.el.setAttribute('rotation', { x: 0, y: -90, z: 0 });
+                            GameState.isEscaped = true;
+                            document.getElementById('victory-overlay').style.display = 'flex';
+                        } else {
+                            if (hudStatus) hudStatus.textContent = "LOCKED: NEED MASTER KEY";
+                            soundEngine.playDoorCreak();
+                        }
+                    }
+
+                    this.updateLockHud();
+                }
+            },
+            updateLockHud: function () {
+                const hudLocks = document.querySelector('#hud-locks');
+                let remaining = 0;
+                if (GameState.locks.woodenBar) remaining++;
+                if (GameState.locks.padlock) remaining++;
+                if (GameState.locks.masterLock) remaining++;
+                if (hudLocks) hudLocks.textContent = `${remaining} REMAINING`;
+            }
+        });
+
+        // Floorboard Creak Trigger Component
+        AFRAME.registerComponent('creaky-board', {
+            init: function () {
+                this.playerRig = document.querySelector('#camera-rig');
+                this.lastTrigger = 0;
+            },
+            tick: function (time) {
+                if (!this.playerRig) return;
+                const playerPos = this.playerRig.getAttribute('position');
+                const boardPos = this.el.getAttribute('position');
+
+                const dist = Math.hypot(playerPos.x - boardPos.x, playerPos.z - boardPos.z);
+                if (dist < 0.65 && (time - this.lastTrigger > 3000)) {
+                    this.lastTrigger = time;
+                    soundEngine.playFloorboardCreak();
+                    broadcastNoise(boardPos, 0.8);
+                    const hudStatus = document.querySelector('#hud-status');
+                    if (hudStatus) hudStatus.textContent = "CREAK! NOISE DETECTED";
+                }
+            }
+        });
+
+        // THE SLOW GRANNY AI COMPONENT (SLOW PATROL, SOUND DETECTION, SLOW CHASE)
+        AFRAME.registerComponent('granny-ai', {
+            init: function () {
+                this.granny = this.el;
+                this.playerRig = document.querySelector('#camera-rig');
+                this.state = 'PATROL'; // 'PATROL', 'INVESTIGATE', 'CHASE', 'ATTACK'
+
+                // SLOW GRANNY SPEED VALUES (Manageable stalker pace)
+                this.walkSpeed = 0.55;  // Slow eerie limping patrol
+                this.chaseSpeed = 1.05; // Slow menacing pursuit
+
+                this.targetPos = new THREE.Vector3(0, 0, -2);
+                this.patrolIndex = 0;
+                this.investigateTimer = 0;
+                this.batArm = document.querySelector('#granny-bat-arm');
+
+                this.patrolWaypoints = [
+                    new THREE.Vector3(2.5, 0, 2.5),   // Bedroom
+                    new THREE.Vector3(0, 0, 1.5),     // Hallway center
+                    new THREE.Vector3(-2.8, 0, 2.2),  // Living room
+                    new THREE.Vector3(-2.5, 0, -2.5), // Kitchen corner
+                    new THREE.Vector3(0, 0, -3.2)     // Foyer Exit door
+                ];
+                this.targetPos.copy(this.patrolWaypoints[0]);
+
+                window.addEventListener('granny-noise-heard', (e) => {
+                    if (this.state !== 'CHASE' && this.state !== 'ATTACK') {
+                        this.state = 'INVESTIGATE';
+                        this.targetPos.set(e.detail.pos.x, 0, e.detail.pos.z);
+                        this.investigateTimer = 8.0;
+                        const hudGranny = document.querySelector('#hud-granny');
+                        if (hudGranny) {
+                            hudGranny.textContent = "INVESTIGATING NOISE";
+                            hudGranny.classList.add('alert-text');
+                        }
+                    }
+                });
+            },
+            tick: function (time, delta) {
+                if (delta <= 0 || GameState.isGameOver || GameState.isEscaped) return;
+                const dt = delta / 1000;
+                const grannyPos = this.granny.getAttribute('position');
+                const playerPos = this.playerRig.getAttribute('position');
+
+                const distToPlayer = Math.hypot(playerPos.x - grannyPos.x, playerPos.z - grannyPos.z);
+                const canSeePlayer = distToPlayer < 6.0 && !GameState.isHiding;
+
+                if (canSeePlayer && this.state !== 'ATTACK') {
+                    this.state = 'CHASE';
+                    this.targetPos.set(playerPos.x, 0, playerPos.z);
+                    soundEngine.setChaseMode(true);
+                    const hudGranny = document.querySelector('#hud-granny');
+                    if (hudGranny) {
+                        hudGranny.textContent = "CHASING PLAYER (SLOW)";
+                        hudGranny.classList.add('alert-text');
+                    }
+                } else if (!canSeePlayer && this.state === 'CHASE') {
+                    this.state = 'INVESTIGATE';
+                    this.investigateTimer = 5.0;
+                    soundEngine.setChaseMode(false);
+                    const hudGranny = document.querySelector('#hud-granny');
+                    if (hudGranny) {
+                        hudGranny.textContent = "SEARCHING AREA";
+                        hudGranny.classList.remove('alert-text');
+                    }
+                }
+
+                // ATTACK TRIGGER (Distance < 1.15m)
+                if (distToPlayer < 1.15 && !GameState.isHiding && this.state !== 'ATTACK') {
+                    this.triggerJumpscareAttack();
+                    return;
+                }
+
+                // Movement & Waypoint Navigation
+                const speed = this.state === 'CHASE' ? this.chaseSpeed : this.walkSpeed;
+                const dx = this.targetPos.x - grannyPos.x;
+                const dz = this.targetPos.z - grannyPos.z;
+                const distToTarget = Math.hypot(dx, dz);
+
+                if (distToTarget > 0.3) {
+                    const moveDirX = dx / distToTarget;
+                    const moveDirZ = dz / distToTarget;
+
+                    grannyPos.x += moveDirX * speed * dt;
+                    grannyPos.z += moveDirZ * speed * dt;
+                    this.granny.setAttribute('position', grannyPos);
+
+                    const angleDeg = Math.atan2(moveDirX, moveDirZ) * (180 / Math.PI);
+                    this.granny.setAttribute('rotation', { x: 0, y: angleDeg, z: 0 });
+
+                    // Slow menacing bat swaying animation
+                    if (this.batArm) {
+                        this.batArm.setAttribute('rotation', {
+                            x: 22 + Math.sin(time * 0.0035) * 12,
+                            y: -15,
+                            z: 10
+                        });
+                    }
+                } else {
+                    if (this.state === 'PATROL') {
+                        this.patrolIndex = (this.patrolIndex + 1) % this.patrolWaypoints.length;
+                        this.targetPos.copy(this.patrolWaypoints[this.patrolIndex]);
+                    } else if (this.state === 'INVESTIGATE') {
+                        this.investigateTimer -= dt;
+                        if (this.investigateTimer <= 0) {
+                            this.state = 'PATROL';
+                            this.targetPos.copy(this.patrolWaypoints[this.patrolIndex]);
+                            const hudGranny = document.querySelector('#hud-granny');
+                            if (hudGranny) hudGranny.textContent = "PATROLLING";
+                        }
+                    }
+                }
+            },
+            triggerJumpscareAttack: function () {
+                this.state = 'ATTACK';
+                GameState.isGameOver = true;
+                soundEngine.setChaseMode(false);
+                soundEngine.playJumpscareStrike();
+                window.dispatchEvent(new CustomEvent('jumpscare-event'));
+
+                const jumpscareOverlay = document.getElementById('jumpscare-overlay');
+                jumpscareOverlay.style.opacity = '1';
+                jumpscareOverlay.textContent = `DAY ${GameState.day} OVER`;
+
+                setTimeout(() => {
+                    GameState.day++;
+                    if (GameState.day > 3) {
+                        jumpscareOverlay.textContent = "GAME OVER - GRANNY GOT YOU";
+                    } else {
+                        this.playerRig.setAttribute('position', { x: 2.2, y: 0, z: 2.2 });
+                        this.granny.setAttribute('position', { x: -2.5, y: 0, z: -2.5 });
+                        this.state = 'PATROL';
+                        GameState.isGameOver = false;
+                        jumpscareOverlay.style.opacity = '0';
+                        const hudDay = document.querySelector('#hud-day');
+                        if (hudDay) hudDay.textContent = `DAY ${GameState.day} / 3`;
+                    }
+                }, 2200);
+            }
+        });
+    </script>
+</head>
+
+<body>
+
+    <!-- Start Overlay Screen -->
+    <div id="start-overlay">
+        <h1>GRANNY</h1>
+        <div class="warning-box">
+            ⚠️ HAUNTED HOUSE VR ESCAPE • GRANNY IS SLOW BUT HEARS EVERYTHING
+        </div>
+        <p>
+            You are trapped in Granny's haunted house.
+            <br><br>
+            • <strong>Move with W, A, S, D</strong> (or Left VR Stick) • Mouse look to turn.
+            <br>
+            • <strong>Interact / Open:</strong> Click or press <strong>E</strong> (or Trigger in VR).
+            <br>
+            • <strong>Drop Item:</strong> Press <strong>G</strong> (or Grip in VR) • <strong>Crouch:</strong> Press
+            <strong>C</strong>.
+            <br>
+            • <strong>Objective:</strong> Find the Crowbar, Padlock Key, and Master Key to unlock the Main Foyer Door!
+        </p>
+        <button class="btn-start" id="btn-enter" onclick="startExperience()">WAKE UP (DAY 1)</button>
+    </div>
+
+    <!-- Dynamic Post-Processing Vignette Overlay -->
+    <div id="vignette-overlay"></div>
+
+    <!-- Jumpscare Attack Overlay -->
+    <div id="jumpscare-overlay">DAY 1 OVER</div>
+
+    <!-- Escape Victory Overlay -->
+    <div id="victory-overlay">
+        <h1>YOU ESCAPED!</h1>
+        <p style="font-size: 1.2rem; color: #a4ebd5; max-width: 500px; line-height: 1.6;">
+            You unlocked all 3 barriers and slipped through the front door before Granny caught you.
+        </p>
+        <button class="btn-start" style="margin-top: 20px;" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <!-- Desktop HUD Status Panel -->
+    <div id="hud-panel">
+        <div class="hud-stat">
+            <span>DAY:</span>
+            <span class="hud-val" id="hud-day">DAY 1 / 3</span>
+        </div>
+        <div class="hud-stat">
+            <span>HELD ITEM:</span>
+            <span class="hud-val" id="hud-item">NONE</span>
+        </div>
+        <div class="hud-stat">
+            <span>DOOR LOCKS:</span>
+            <span class="hud-val" id="hud-locks">3 REMAINING</span>
+        </div>
+        <div class="hud-stat">
+            <span>GRANNY:</span>
+            <span class="hud-val" id="hud-granny">PATROLLING (SLOW)</span>
+        </div>
+        <div class="hud-stat">
+            <span>STANCE:</span>
+            <span class="hud-val" id="hud-hiding">STANDING</span>
+        </div>
+        <div class="hud-stat" style="font-size: 0.8rem; color: #78a192; margin-top: 4px;">
+            [W,A,S,D] Move • [E] Interact • [G] Drop item • [C] Crouch
+        </div>
+    </div>
+
+    <!-- Center Crosshair for Desktop -->
+    <div id="crosshair"></div>
+
+    <!-- A-Frame VR Scene -->
+    <a-scene renderer="antialias: true; colorManagement: true; foveationLevel: 2; highRefreshRate: true;"
+        shadow="type: pcfsoft" fog="type: exponential; color: #030605; density: 0.08;" background="color: #020403">
+
+        <!-- Procedural Textures -->
+        <a-assets>
+            <canvas id="woodFloorCanvas"></canvas>
+            <canvas id="wallpaperCanvas"></canvas>
+        </a-assets>
+
+        <!-- =========================================================================
+         PLAYER CAMERA RIG & VR CONTROLLERS (WITH FLASHLIGHT & RAYCASTER)
+         ========================================================================= -->
+        <a-entity id="camera-rig" position="2.2 0 2.2" player-locomotion="moveSpeed: 2.8">
+            <a-camera id="player-camera" look-controls="pointerLockEnabled: false" wasd-controls="enabled: false"
+                position="0 1.6 0">
+
+                <!-- Player Handheld Flashlight -->
+                <a-light type="spot" position="0.2 -0.2 -0.1" target="#flashlight-target" angle="35" penumbra="0.6"
+                    color="#fff6cf" intensity="2.2" distance="10" castShadow="true">
+                </a-light>
+                <a-entity id="flashlight-target" position="0 -0.2 -4"></a-entity>
+
+                <!-- Desktop Cursor Raycaster -->
+                <a-cursor id="desktop-cursor" raycaster="objects: .clickable; far: 3.5" color="#6ee6b8" opacity="0.8">
+                </a-cursor>
+            </a-camera>
+
+            <!-- Meta Quest 3/3S Touch Controllers with Haptics & Raycaster -->
+            <a-entity id="left-hand" oculus-touch-controls="hand: left" quest-haptics="hand: left"
+                raycaster="objects: .clickable; far: 3.5" laser-controls="hand: left">
+            </a-entity>
+
+            <a-entity id="right-hand" oculus-touch-controls="hand: right" quest-haptics="hand: right"
+                raycaster="objects: .clickable; far: 3.5" laser-controls="hand: right">
+            </a-entity>
+        </a-entity>
+
+        <!-- =========================================================================
+         THE SLOW GRANNY ANTAGONIST (PROCEDURAL 3D CHARACTER WITH BAT & SOUND AI)
+         ========================================================================= -->
+        <a-entity id="granny-npc" position="-2.5 0 -2.5" granny-ai>
+            <a-entity class="granny-model-group">
+
+                <!-- Granny Tattered Stained Nightgown / Dress -->
+                <a-cone position="0 0.65 0" radius-bottom="0.42" radius-top="0.22" height="1.3" color="#d8d4c7"
+                    material="roughness: 0.9" shadow></a-cone>
+                <a-cylinder position="0 1.2 0" radius="0.23" height="0.65" color="#d8d4c7" shadow></a-cylinder>
+
+                <!-- Floral Stains & Grime -->
+                <a-sphere position="0.06 1.05 0.12" radius="0.06" color="#421a18" opacity="0.75"></a-sphere>
+                <a-sphere position="-0.08 0.85 0.12" radius="0.05" color="#421a18" opacity="0.7"></a-sphere>
+
+                <!-- Granny Wrinkled Head & Gray Bun -->
+                <a-entity class="granny-head" position="0 1.68 0">
+                    <a-sphere radius="0.16" color="#cfbaaa" material="roughness: 0.75"></a-sphere>
+                    <!-- Gray Hair Bun on Top/Back -->
+                    <a-sphere position="0 0.14 -0.05" radius="0.09" color="#858585"></a-sphere>
+
+                    <!-- Creepy Glowing White/Bloodshot Eyes -->
+                    <a-sphere position="-0.055 0.03 0.135" radius="0.022" color="#ffffff"
+                        material="emissive: #ffeded; emissiveIntensity: 1.5"></a-sphere>
+                    <a-sphere position="0.055 0.03 0.135" radius="0.022" color="#ffffff"
+                        material="emissive: #ffeded; emissiveIntensity: 1.5"></a-sphere>
+                    <a-sphere position="-0.055 0.03 0.148" radius="0.007" color="#5c0000"></a-sphere>
+                    <a-sphere position="0.055 0.03 0.148" radius="0.007" color="#5c0000"></a-sphere>
+
+                    <!-- Creepy Open Grinning Mouth -->
+                    <a-box position="0 -0.06 0.14" width="0.09" height="0.03" depth="0.02" color="#260000"></a-box>
+                </a-entity>
+
+                <!-- Left Arm -->
+                <a-entity position="-0.28 1.4 0">
+                    <a-cylinder position="0 -0.22 0" rotation="10 0 10" radius="0.05" height="0.5"
+                        color="#d8d4c7"></a-cylinder>
+                    <a-sphere position="0.04 -0.48 0.05" radius="0.05" color="#cfbaaa"></a-sphere>
+                </a-entity>
+
+                <!-- Right Arm Raised with Bloody Wooden Baseball Bat -->
+                <a-entity id="granny-bat-arm" position="0.28 1.4 0" rotation="30 -15 10">
+                    <a-cylinder position="0 -0.2 0.05" rotation="-20 0 -10" radius="0.05" height="0.48"
+                        color="#d8d4c7"></a-cylinder>
+                    <a-sphere position="-0.02 -0.42 0.15" radius="0.05" color="#cfbaaa"></a-sphere>
+
+                    <!-- Wooden Baseball Bat -->
+                    <a-cylinder position="-0.02 -0.3 0.35" rotation="65 0 0" radius="0.028" height="0.65"
+                        color="#8c5835" material="roughness: 0.7"></a-cylinder>
+                    <!-- Blood Stains on Tip of Bat -->
+                    <a-cylinder position="-0.02 -0.18 0.58" rotation="65 0 0" radius="0.032" height="0.18"
+                        color="#4a0f0d" material="roughness: 0.6"></a-cylinder>
+                </a-entity>
+
+            </a-entity>
+        </a-entity>
+
+        <!-- =========================================================================
+         HAUNTED HOUSE ARCHITECTURE & ROOMS
+         ========================================================================= -->
+        <!-- Dim Green/Amber Ambient Fill Light -->
+        <a-light type="ambient" color="#0c1712" intensity="0.6"></a-light>
+
+        <!-- Creaky Wooden Floor & Ceiling -->
+        <a-box id="house-floor" position="0 -0.05 0" width="11" height="0.1" depth="11" color="#2b1e16"
+            material="roughness: 0.8" shadow="receive: true"></a-box>
+        <a-box id="house-ceiling" position="0 3.4 0" width="11" height="0.1" depth="11" color="#120e0c"></a-box>
+
+        <!-- Exterior Walls -->
+        <a-box id="wall-north" position="0 1.7 -5.45" width="11" height="3.4" depth="0.1" color="#262e24"
+            material="roughness: 0.85"></a-box>
+        <a-box id="wall-south" position="0 1.7 5.45" width="11" height="3.4" depth="0.1" color="#262e24"
+            material="roughness: 0.85"></a-box>
+        <a-box id="wall-west" position="-5.45 1.7 0" rotation="0 90 0" width="11" height="3.4" depth="0.1"
+            color="#262e24" material="roughness: 0.85"></a-box>
+        <a-box id="wall-east" position="5.45 1.7 0" rotation="0 90 0" width="11" height="3.4" depth="0.1"
+            color="#262e24" material="roughness: 0.85"></a-box>
+
+        <!-- Interior Dividing Partition Walls -->
+        <a-box position="1.2 1.7 3.2" width="0.1" height="3.4" depth="4.5" color="#222920"></a-box>
+        <a-box position="-1.5 1.7 -1.2" width="4.5" height="3.4" depth="0.1" color="#222920"></a-box>
+
+        <!-- =========================================================================
+         INTERACTIVE FURNITURE & HIDING PLACES
+         ========================================================================= -->
+        <!-- 1. THE SPAWN BEDROOM (Top Right Room: x=2 to 5, z=2 to 5) -->
+        <!-- Bed (Player can crouch under to hide) -->
+        <a-entity position="4.0 0 4.0">
+            <a-box position="0 0.35 0" width="1.6" height="0.25" depth="2.1" color="#302018"></a-box>
+            <a-box position="0 0.5 0" width="1.5" height="0.15" depth="2.0" color="#522f2b"></a-box>
+            <a-box position="0 0.6 0.8" width="1.3" height="0.1" depth="0.4" color="#d4c9be"></a-box>
+        </a-entity>
+
+        <!-- Creaky Wardrobe / Closet to Hide Inside -->
+        <a-entity id="bedroom-wardrobe" position="4.6 0 2.2" rotation="0 -90 0">
+            <a-box position="0 1.2 0" width="1.1" height="2.4" depth="0.7" color="#24160f"
+                material="roughness: 0.8"></a-box>
+            <!-- Openable Wardrobe Door -->
+            <a-entity position="-0.5 1.2 0.35" class="clickable" interactive-item="type: wardrobe_door"
+                data-open="false">
+                <a-box position="0.5 0 0" width="1.0" height="2.35" depth="0.04" color="#3d251a">
+                    <!-- Door Handle Knob -->
+                    <a-sphere position="0.4 0 0.04" radius="0.035" color="#d4af37" material="metalness: 0.9"></a-sphere>
+                </a-box>
+            </a-entity>
+        </a-entity>
+
+        <!-- Bedside Nightstand Table with Sliding Searchable Drawer -->
+        <a-entity position="2.4 0 4.6">
+            <a-box position="0 0.4 0" width="0.7" height="0.8" depth="0.6" color="#382319"></a-box>
+            <!-- Sliding Drawer (Clickable) -->
+            <a-entity position="0 0.55 0.05" class="clickable" interactive-item="type: drawer" data-open="false">
+                <a-box position="0 0 0" width="0.58" height="0.2" depth="0.5" color="#4a3024">
+                    <a-sphere position="0 0 0.26" radius="0.025" color="#d4af37" material="metalness: 0.95"></a-sphere>
+                </a-box>
+                <!-- CROWBAR HIDDEN IN BEDROOM DRAWER -->
+                <a-entity position="0 0.02 0" class="clickable" interactive-item="type: crowbar">
+                    <a-box width="0.04" height="0.04" depth="0.4" color="#9e2a2b" material="metalness: 0.8"></a-box>
+                </a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- Creaky Floorboard Trigger in Bedroom Doorway -->
+        <a-box position="2.2 0.01 1.2" width="1.0" height="0.02" depth="0.6" color="#38251a" creaky-board></a-box>
+
+        <!-- 2. LIVING ROOM (Left Room: x=-2 to -5, z=0 to 4) -->
+        <!-- Sofa -->
+        <a-entity position="-3.8 0 2.8" rotation="0 90 0">
+            <a-box position="0 0.35 0" width="1.8" height="0.4" depth="0.8" color="#381c16"></a-box>
+            <a-box position="0 0.7 -0.35" width="1.8" height="0.6" depth="0.2" color="#381c16"></a-box>
+        </a-entity>
+
+        <!-- Small Table with Droppable Ceramic Vase (Noise Hazard!) -->
+        <a-entity position="-2.4 0 3.2">
+            <a-cylinder position="0 0.4 0" radius="0.4" height="0.8" color="#261710"></a-cylinder>
+            <!-- Interactable Droppable Vase -->
+            <a-entity position="0 0.9 0" class="clickable" interactive-item="type: vase">
+                <a-cylinder radius="0.09" height="0.22" color="#556b64"></a-cylinder>
+            </a-entity>
+        </a-entity>
+
+        <!-- Living Room Dresser with Drawer containing GOLDEN PADLOCK KEY -->
+        <a-entity position="-4.8 0 0.8" rotation="0 90 0">
+            <a-box position="0 0.5 0" width="1.2" height="1.0" depth="0.5" color="#382319"></a-box>
+            <a-entity position="0 0.65 0.05" class="clickable" interactive-item="type: drawer" data-open="false">
+                <a-box position="0 0 0" width="1.05" height="0.25" depth="0.42" color="#4a3024">
+                    <a-sphere position="0 0 0.22" radius="0.025" color="#d4af37" material="metalness: 0.95"></a-sphere>
+                </a-box>
+                <!-- GOLDEN PADLOCK KEY IN DRESSER -->
+                <a-entity position="0 0.02 0" class="clickable" interactive-item="type: padlock_key">
+                    <a-box width="0.06" height="0.02" depth="0.14" color="#d4af37" material="metalness: 0.95"></a-box>
+                </a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- Grandfather Clock in Corner (Ticking) -->
+        <a-entity position="-4.8 0 -4.8">
+            <a-box position="0 1.2 0" width="0.6" height="2.4" depth="0.5" color="#2b1810"></a-box>
+            <a-circle position="0 1.8 0.26" radius="0.18" color="#f0ead6"></a-circle>
+        </a-entity>
+
+        <!-- 3. KITCHEN / CORRIDOR CLOSET CONTAINING THE MASTER KEY -->
+        <a-entity position="-2.2 0 -4.6">
+            <a-box position="0 0.5 0" width="1.2" height="1.0" depth="0.5" color="#382319"></a-box>
+            <a-entity position="0 0.65 0.05" class="clickable" interactive-item="type: drawer" data-open="false">
+                <a-box position="0 0 0" width="1.05" height="0.25" depth="0.42" color="#4a3024">
+                    <a-sphere position="0 0 0.22" radius="0.025" color="#c0c0c0" material="metalness: 0.95"></a-sphere>
+                </a-box>
+                <!-- MASTER KEY IN KITCHEN CABINET -->
+                <a-entity position="0 0.02 0" class="clickable" interactive-item="type: master_key">
+                    <a-box width="0.06" height="0.02" depth="0.14" color="#c0c0c0" material="metalness: 0.95"></a-box>
+                </a-entity>
+            </a-entity>
+        </a-entity>
+
+        <!-- =========================================================================
+         4. MAIN EXIT FOYER DOOR WITH 3 LOCK MECHANISMS
+         ========================================================================= -->
+        <a-entity id="main-exit-foyer" position="0 0 -5.35">
+            <!-- Heavy Wooden Exit Door Frame -->
+            <a-box position="0 1.4 0" width="1.8" height="2.8" depth="0.15" color="#18120e"></a-box>
+
+            <!-- Openable Exit Door Leaf -->
+            <a-entity id="exit-door-leaf" position="-0.7 1.35 0.05" class="clickable"
+                interactive-item="type: exit_door">
+                <a-box position="0.7 0 0" width="1.4" height="2.6" depth="0.08" color="#3b2216"
+                    material="roughness: 0.8">
+
+                    <!-- Door Knob -->
+                    <a-sphere position="0.55 0 0.06" radius="0.04" color="#d4af37" material="metalness: 0.9"></a-sphere>
+
+                    <!-- LOCK 1: HEAVY WOODEN BAR ACROSS DOOR -->
+                    <a-entity id="exit-wooden-bar" position="0 0.35 0.08">
+                        <a-box width="1.3" height="0.12" depth="0.06" color="#5c3826"></a-box>
+                        <a-box position="-0.5 0 0" width="0.1" height="0.18" depth="0.08" color="#1a1a1a"
+                            material="metalness: 0.9"></a-box>
+                        <a-box position="0.5 0 0" width="0.1" height="0.18" depth="0.08" color="#1a1a1a"
+                            material="metalness: 0.9"></a-box>
+                    </a-entity>
+
+                    <!-- LOCK 2: GOLDEN PADLOCK ON HASP -->
+                    <a-entity id="exit-padlock" position="0.3 0 0.08">
+                        <a-box width="0.12" height="0.12" depth="0.04" color="#d4af37"
+                            material="metalness: 0.95"></a-box>
+                        <a-torus radius="0.05" radius-tubular="0.015" arc="180" rotation="0 0 180" position="0 0.06 0"
+                            color="#c0c0c0" material="metalness: 0.95"></a-torus>
+                    </a-entity>
+
+                    <!-- LOCK 3: MASTER DOOR KEYHOLE -->
+                    <a-entity id="exit-master-lock" position="0.3 -0.35 0.06">
+                        <a-circle radius="0.045" color="#1a1a1a" material="metalness: 0.9"></a-circle>
+                    </a-entity>
+
+                </a-box>
+            </a-entity>
+        </a-entity>
+
+        <!-- Atmospheric Hallway Lantern Light -->
+        <a-light type="point" position="0 2.6 0" color="#ffdda6" intensity="0.7" distance="8" decay="2"></a-light>
+
+    </a-scene>
+
+    <!-- =========================================================================
+       EXPERIENCE LAUNCH & DYNAMIC LISTENERS
+       ========================================================================= -->
+    <script>
+        function startExperience() {
+            soundEngine.init();
+
+            const startOverlay = document.getElementById('start-overlay');
+            startOverlay.style.transition = 'opacity 0.8s ease';
+            startOverlay.style.opacity = '0';
+            setTimeout(() => {
+                startOverlay.style.display = 'none';
+                document.getElementById('hud-panel').style.display = 'block';
+                document.getElementById('crosshair').style.display = 'block';
+            }, 850);
+
+            // Inject Procedural Textures
+            try {
+                const woodTex = generateWoodFloorTexture();
+                const wallTex = generateWallpaperTexture();
+
+                const floor = document.querySelector('#house-floor');
+                if (floor) floor.setAttribute('material', `src: ${woodTex}; repeat: 8 8; roughness: 0.8;`);
+
+                const wallEls = ['#wall-north', '#wall-south', '#wall-west', '#wall-east'];
+                wallEls.forEach(id => {
+                    const el = document.querySelector(id);
+                    if (el) el.setAttribute('material', `src: ${wallTex}; repeat: 6 2; roughness: 0.85;`);
+                });
+            } catch (e) {
+                console.warn("Procedural texture notice:", e);
+            }
+        }
+
+        // Dynamic Vignette Pulse in rhythm with Heartbeat
+        window.addEventListener('heartbeat-tick', (e) => {
+            const vignette = document.getElementById('vignette-overlay');
+            if (vignette) {
+                const bpm = e.detail.bpm;
+                const darkness = Math.min(0.96, 0.75 + (bpm / 340));
+                const spread = Math.min(145, 80 + (bpm * 0.42));
+
+                vignette.style.boxShadow = `inset 0 0 ${spread}px 45px rgba(35, 2, 2, ${darkness})`;
+                vignette.style.opacity = '1';
+
+                setTimeout(() => {
+                    vignette.style.boxShadow = 'inset 0 0 100px 40px rgba(0, 0, 0, 0.85)';
+                    vignette.style.opacity = '0.85';
+                }, 120);
+            }
+        });
+    </script>
+</body>
+
+</html>
